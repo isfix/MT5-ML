@@ -230,3 +230,7 @@ project_blueprint.txt
 # Ignore everything in models/ except .txt files
 /models/*
 !/models/*.txt
+test_onnx_model.py
+test_onnx_outputs.py
+temp_xgb_model.json
+test_mql5_features.py

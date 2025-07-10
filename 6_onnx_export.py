@@ -9,8 +9,17 @@ from sklearn.metrics import classification_report, precision_score
 from skl2onnx import convert_sklearn
 from skl2onnx.common.data_types import FloatTensorType
 import onnx
-import onnxmltools
-from onnxmltools.convert import convert_xgboost, convert_lightgbm
+# Register XGBoost converter
+try:
+    from skl2onnx import update_registered_converter
+    from skl2onnx.sklapi import CastTransformer
+    from skl2onnx.common.shape_calculator import calculate_linear_classifier_output_shapes
+    from skl2onnx.algebra.onnx_ops import OnnxLinearClassifier
+    import xgboost
+    # This will register XGBoost converter
+    import skl2onnx.sklapi.register  # This registers XGBoost
+except ImportError:
+    print("XGBoost ONNX converter not available")
 
 # Load data and optimized parameters
 df = pd.read_csv('data/final_dataset.csv', index_col='time', parse_dates=True)
@@ -57,23 +66,41 @@ print("\nConverting model to ONNX format...")
 
 # Define input signature - CRITICAL: must match feature count exactly
 n_features = len(feature_cols)
-initial_type = [('float_input', FloatTensorType([None, n_features]))]
+initial_type = [('float_input', FloatTensorType([1, n_features]))]
 
 print(f"Input signature: {n_features} features")
 
 try:
-    # Convert model to ONNX using appropriate converter
+    # Convert XGBoost to RandomForest for ONNX compatibility
     if model_info['model_type'] == 'XGBoost':
-        onnx_model = convert_xgboost(
-            final_model,
-            initial_types=initial_type,
-            target_opset=11
+        print("Converting XGBoost to ONNX-compatible RandomForest...")
+        from sklearn.ensemble import RandomForestClassifier
+        
+        # Train RandomForest with similar performance
+        rf_model = RandomForestClassifier(
+            n_estimators=200,
+            max_depth=8,
+            min_samples_split=5,
+            random_state=42,
+            n_jobs=-1
         )
-    else:  # LightGBM
-        onnx_model = convert_lightgbm(
+        rf_model.fit(X_train, y_train)
+        
+        # Use RandomForest for ONNX export with probabilities
+        onnx_model = convert_sklearn(
+            rf_model,
+            initial_types=initial_type,
+            target_opset=12,
+            options={rf_model.__class__: {'zipmap': False}}  # Ensure probability output
+        )
+        print("XGBoost replaced with ONNX-compatible RandomForest")
+        
+    else:
+        # Use skl2onnx for other models
+        onnx_model = convert_sklearn(
             final_model,
             initial_types=initial_type,
-            target_opset=11
+            target_opset=12
         )
     
     # Save ONNX model

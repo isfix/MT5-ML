@@ -2,7 +2,7 @@
 
 A sophisticated machine learning-powered Expert Advisor for MetaTrader 5 that combines rule-based triggers with ML validation for high-probability trade entries.
 
-## 🎯 Project Overview
+## Project Overview
 
 This project implements a **data-driven trading system** that:
 - Uses ML models to validate trade entries (not predict direction)
@@ -11,7 +11,7 @@ This project implements a **data-driven trading system** that:
 - Supports multi-symbol training for robust generalization
 - Includes fallback logic for reliability
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
@@ -23,7 +23,7 @@ This project implements a **data-driven trading system** that:
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 MT5ML2/
@@ -49,7 +49,7 @@ MT5ML2/
     └── final_model_metadata.json
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -96,7 +96,7 @@ python 6_onnx_export.py           # Export to ONNX format
 3. Compile and attach to chart
 4. Configure EA parameters
 
-## 🧠 Machine Learning Pipeline
+## Machine Learning Pipeline
 
 ### Feature Engineering (14 Features)
 
@@ -124,7 +124,7 @@ python 6_onnx_export.py           # Export to ONNX format
 3. **Export**: ONNX format for MQL5 compatibility
 4. **Validation**: Stratified train/test split with precision focus
 
-## 📊 Expert Advisor Features
+## Expert Advisor Features
 
 ### Core Functionality
 
@@ -153,7 +153,7 @@ input bool     InpUseTrailingStop = true;      // Enable trailing stops
 5. **Trade Execution**: If confidence ≥ threshold, execute with calculated SL/TP
 6. **Position Management**: Track, trail, and log all positions
 
-## 🔧 Configuration Options
+## Configuration Options
 
 ### Trading Pairs (`config.py`)
 
@@ -182,7 +182,7 @@ GA_GENERATIONS = 10         # GA generations
 TEST_SIZE = 0.2            # Train/test split ratio
 ```
 
-## 📈 Backtesting
+## Backtesting
 
 ### MetaTrader 5 Strategy Tester
 
@@ -199,7 +199,7 @@ TEST_SIZE = 0.2            # Train/test split ratio
 - **Trade Decisions**: Execute/Reject based on threshold
 - **Risk Management**: Position sizing and trailing stops
 
-## 🛠️ Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -217,7 +217,7 @@ Enable detailed logging by setting:
 input bool InpUseFallbackLogic = true;  // Shows fallback predictions
 ```
 
-## 📊 Performance Metrics
+## Performance Metrics
 
 The system tracks:
 - **Precision**: Percentage of predicted wins that were actual wins
@@ -225,7 +225,7 @@ The system tracks:
 - **Risk-Reward**: Actual vs target RR ratios
 - **Confidence Distribution**: ML prediction score analysis
 
-## 🔄 Retraining Workflow
+## Retraining Workflow
 
 ### When to Retrain
 
@@ -241,23 +241,11 @@ The system tracks:
 3. Validate new model against old model on hold-out data
 4. Deploy only if statistically significant improvement
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/improvement`)
-3. Commit changes (`git commit -am 'Add improvement'`)
-4. Push to branch (`git push origin feature/improvement`)
-5. Create Pull Request
-
-## ⚠️ Disclaimer
+## Disclaimer
 
 This software is for educational and research purposes. Trading involves substantial risk of loss. Past performance does not guarantee future results. Use at your own risk and never risk more than you can afford to lose.
 
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - MetaTrader 5 for the trading platform
 - ONNX community for model portability standards

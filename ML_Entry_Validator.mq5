@@ -12,7 +12,7 @@
 
 //--- Input parameters
 input group "=== ML Model Settings ==="
-input double   InpConfidenceThreshold = 0.65;     // ML confidence threshold
+input double   InpConfidenceThreshold = 0.50;     // ML confidence threshold
 input bool     InpUseFallbackLogic = true;        // Use fallback if model fails
 
 input group "=== Trading Parameters ==="
@@ -167,6 +167,14 @@ void ProcessTradingSignals()
    
    Print("TRIGGER: Market conditions met at ", TimeToString(TimeCurrent()));
    
+   // DEBUG: Print all feature values
+   string feature_log = "Features: ";
+   for(int i = 0; i < FEATURE_COUNT; i++)
+   {
+      feature_log += "[" + IntegerToString(i) + "]=" + DoubleToString(m_features[i], 4) + "; ";
+   }
+   Print(feature_log);
+   
    // Get ML prediction
    double confidence = GetMLPrediction();
    
@@ -234,8 +242,28 @@ bool CalculateFeatures()
    m_features[11] = (hour >= 7 && hour <= 15) ? 1.0 : 0.0;  // is_london_session
    m_features[12] = (hour >= 13 && hour <= 21) ? 1.0 : 0.0; // is_ny_session
    
-   // H1 RSI (approximated)
-   m_features[13] = m_features[5]; // RSI_14_H1
+   // H1 RSI (correct implementation)
+   double rsi_H1_buffer[];
+   ArrayResize(rsi_H1_buffer, 1);
+   int rsi_H1_handle = iRSI(_Symbol, PERIOD_H1, InpRSIPeriod, PRICE_CLOSE);
+   if(rsi_H1_handle != INVALID_HANDLE)
+   {
+      if(CopyBuffer(rsi_H1_handle, 0, 1, 1, rsi_H1_buffer) > 0)
+      {
+         m_features[13] = rsi_H1_buffer[0]; // RSI_14_H1
+      }
+      else
+      {
+         m_features[13] = m_features[5]; // Fallback to M5 RSI
+         Print("Warning: Failed to copy H1 RSI buffer");
+      }
+      IndicatorRelease(rsi_H1_handle);
+   }
+   else
+   {
+      m_features[13] = m_features[5]; // Fallback to M5 RSI
+      Print("Warning: Failed to create H1 RSI handle");
+   }
    
    return true;
 }
@@ -267,7 +295,7 @@ bool RunONNXModel(double &features[], double &predictions[])
 {
    if(m_onnxModel == INVALID_HANDLE) return false;
    
-   // Set input shape [1, 14] - batch size 1, 14 features
+   // Set input shape [1, 14]
    ulong input_shape[] = {1, FEATURE_COUNT};
    if(!OnnxSetInputShape(m_onnxModel, 0, input_shape))
    {
@@ -275,16 +303,45 @@ bool RunONNXModel(double &features[], double &predictions[])
       return false;
    }
    
-   // Set output shape [1, 1] - batch size 1, 1 prediction
-   ulong output_shape[] = {1, 1};
-   if(!OnnxSetOutputShape(m_onnxModel, 0, output_shape))
+   // Set both output shapes as model has 2 outputs
+   // Output 0: label, shape [1]
+   ulong output_shape0[] = {1};
+   if(!OnnxSetOutputShape(m_onnxModel, 0, output_shape0))
    {
-      Print("ERROR: Failed to set output shape");
+      Print("ERROR: Failed to set output shape 0");
       return false;
    }
    
-   // Run inference
-   return OnnxRun(m_onnxModel, ONNX_NO_CONVERSION, features, predictions);
+   // Output 1: probabilities, shape [1, 2]
+   ulong output_shape1[] = {1, 2};
+   if(!OnnxSetOutputShape(m_onnxModel, 1, output_shape1))
+   {
+      Print("ERROR: Failed to set output shape 1");
+      return false;
+   }
+   
+   // Create properly typed FLOAT array for ONNX model
+   float input_data[];
+   ArrayResize(input_data, FEATURE_COUNT);
+   for(int i = 0; i < FEATURE_COUNT; i++)
+      input_data[i] = (float)features[i];
+   
+   // Prepare fixed-size float arrays for outputs
+   float output_label[1];
+   float output_probabilities[2];
+   
+   // Run inference using default conversion
+   bool result = OnnxRun(m_onnxModel, ONNX_DEFAULT, input_data, output_label, output_probabilities);
+   if(result)
+   {
+      predictions[0] = output_probabilities[1];  // Probability of class 1
+   }
+   else
+   {
+      Print("ERROR: OnnxRun failed. Error code: ", GetLastError());
+   }
+   
+   return result;
 }
 
 //+------------------------------------------------------------------+
@@ -295,10 +352,10 @@ double GetMLPrediction()
    if(m_modelLoaded)
    {
       // Use ONNX model
-      double predictions[1];
+      double predictions[1];  // Single output
       if(RunONNXModel(m_features, predictions))
       {
-         return predictions[0];
+         return predictions[0];  // Return prediction probability
       }
       else
       {
