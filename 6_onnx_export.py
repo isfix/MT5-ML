@@ -9,6 +9,8 @@ from sklearn.metrics import classification_report, precision_score
 from skl2onnx import convert_sklearn
 from skl2onnx.common.data_types import FloatTensorType
 import onnx
+import glob
+import os
 # Register XGBoost converter
 try:
     from skl2onnx import update_registered_converter
@@ -16,13 +18,16 @@ try:
     from skl2onnx.common.shape_calculator import calculate_linear_classifier_output_shapes
     from skl2onnx.algebra.onnx_ops import OnnxLinearClassifier
     import xgboost
-    # This will register XGBoost converter
     import skl2onnx.sklapi.register  # This registers XGBoost
 except ImportError:
     print("XGBoost ONNX converter not available")
 
-# Load data and optimized parameters
-df = pd.read_csv('data/final_dataset.csv', index_col='time', parse_dates=True)
+# Define symbol and load data
+symbol = "EURUSD"  # Define the symbol for the output model
+final_dataset_path = 'data/final_dataset.csv'
+print(f"Using symbol: {symbol}")
+print(f"Loading dataset: {final_dataset_path}")
+df = pd.read_csv(final_dataset_path, index_col='time', parse_dates=True)
 
 with open('models/model_info.json', 'r') as f:
     model_info = json.load(f)
@@ -75,8 +80,6 @@ try:
     if model_info['model_type'] == 'XGBoost':
         print("Converting XGBoost to ONNX-compatible RandomForest...")
         from sklearn.ensemble import RandomForestClassifier
-        
-        # Train RandomForest with similar performance
         rf_model = RandomForestClassifier(
             n_estimators=200,
             max_depth=8,
@@ -85,48 +88,35 @@ try:
             n_jobs=-1
         )
         rf_model.fit(X_train, y_train)
-        
-        # Use RandomForest for ONNX export with probabilities
         onnx_model = convert_sklearn(
             rf_model,
             initial_types=initial_type,
             target_opset=12,
-            options={rf_model.__class__: {'zipmap': False}}  # Ensure probability output
+            options={rf_model.__class__: {'zipmap': False}}
         )
         print("XGBoost replaced with ONNX-compatible RandomForest")
-        
     else:
-        # Use skl2onnx for other models
         onnx_model = convert_sklearn(
             final_model,
             initial_types=initial_type,
             target_opset=12
         )
-    
     # Save ONNX model
-    onnx_path = 'models/entry_model.onnx'
+    onnx_path = f'models/entry_model_{symbol}.onnx'
     with open(onnx_path, 'wb') as f:
         f.write(onnx_model.SerializeToString())
-    
     print(f"ONNX model saved to: {onnx_path}")
-    
     # Verify ONNX model
     onnx_model_check = onnx.load(onnx_path)
     onnx.checker.check_model(onnx_model_check)
     print("ONNX model validation: PASSED")
-    
-    # Get file size
-    import os
     file_size = os.path.getsize(onnx_path) / 1024  # KB
     print(f"Model file size: {file_size:.1f} KB")
-    
 except Exception as e:
     print(f"ONNX conversion failed: {e}")
     print("Attempting alternative conversion...")
-    
-    # Alternative: save as pickle for testing
     import pickle
-    with open('models/entry_model.pkl', 'wb') as f:
+    with open(f'models/entry_model_{symbol}.pkl', 'wb') as f:
         pickle.dump(final_model, f)
     print("Model saved as pickle file for backup")
 
@@ -138,10 +128,11 @@ final_metadata = {
     'test_precision': float(final_precision),
     'optimized_params': optimized_params,
     'training_samples': len(X_train),
-    'test_samples': len(X_test)
+    'test_samples': len(X_test),
+    'symbol': symbol
 }
 
-with open('models/final_model_metadata.json', 'w') as f:
+with open(f'models/final_model_metadata_{symbol}.json', 'w') as f:
     json.dump(final_metadata, f, indent=2)
 
 print(f"\n=== Export Complete ===")

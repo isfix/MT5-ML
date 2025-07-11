@@ -10,10 +10,9 @@ import os
 # Create models directory
 os.makedirs('models', exist_ok=True)
 
-# Load final dataset
+# Load the single labeled dataset
 df = pd.read_csv('data/final_dataset.csv', index_col='time', parse_dates=True)
-
-print(f"Loaded {len(df)} labeled examples for training")
+print(f"Loaded {len(df)} samples from the final dataset.")
 
 # Separate features and target
 feature_cols = ['Open', 'High', 'Low', 'Close', 'Volume', 'RSI_14', 'ATR_14', 
@@ -23,17 +22,15 @@ feature_cols = ['Open', 'High', 'Low', 'Close', 'Volume', 'RSI_14', 'ATR_14',
 X = df[feature_cols]
 y = df['label']
 
+# Split data into training and validation sets
+X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+
+print(f"Training data: {len(X_train)} samples")
+print(f"Validation data: {len(X_val)} samples")
+
 print(f"Features: {len(feature_cols)}")
-print(f"Feature names: {feature_cols}")
-
-# Split data with stratification
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42, stratify=y
-)
-
-print(f"Training set: {len(X_train)} samples")
-print(f"Test set: {len(X_test)} samples")
 print(f"Training class distribution: {y_train.value_counts().to_dict()}")
+print(f"Validation class distribution: {y_val.value_counts().to_dict()}")
 
 # Train XGBoost baseline
 print("\n=== Training XGBoost Baseline ===")
@@ -46,10 +43,10 @@ xgb_model = xgb.XGBClassifier(
 )
 
 xgb_model.fit(X_train, y_train)
-xgb_pred = xgb_model.predict(X_test)
+xgb_pred = xgb_model.predict(X_val)  # Evaluate on validation set
 
 print("XGBoost Results:")
-print(classification_report(y_test, xgb_pred))
+print(classification_report(y_val, xgb_pred))
 
 # Train LightGBM baseline
 print("\n=== Training LightGBM Baseline ===")
@@ -62,16 +59,16 @@ lgb_model = lgb.LGBMClassifier(
 )
 
 lgb_model.fit(X_train, y_train)
-lgb_pred = lgb_model.predict(X_test)
+lgb_pred = lgb_model.predict(X_val)  # Evaluate on validation set
 
 print("LightGBM Results:")
-print(classification_report(y_test, lgb_pred))
+print(classification_report(y_val, lgb_pred))
 
 # Compare models
 from sklearn.metrics import precision_score, recall_score, f1_score
 
-xgb_precision = precision_score(y_test, xgb_pred)
-lgb_precision = precision_score(y_test, lgb_pred)
+xgb_precision = precision_score(y_val, xgb_pred)
+lgb_precision = precision_score(y_val, lgb_pred)
 
 print(f"\n=== Model Comparison ===")
 print(f"XGBoost Precision (Class 1): {xgb_precision:.4f}")

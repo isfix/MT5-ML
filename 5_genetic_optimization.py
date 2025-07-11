@@ -9,8 +9,9 @@ import json
 import random
 from deap import base, creator, tools, algorithms
 
-# Load data and model info
+# Load the single labeled dataset
 df = pd.read_csv('data/final_dataset.csv', index_col='time', parse_dates=True)
+
 with open('models/model_info.json', 'r') as f:
     model_info = json.load(f)
 
@@ -18,13 +19,13 @@ feature_cols = model_info['feature_names']
 X = df[feature_cols]
 y = df['label']
 
-# Use only training data for optimization (80% of total)
+# For GA, we will use cross-validation on the entire dataset.
+# We'll split it inside the evaluation function.
 from sklearn.model_selection import train_test_split
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42, stratify=y
-)
+X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 
-print(f"Optimizing {model_info['model_type']} on {len(X_train)} training samples")
+
+print(f"Optimizing {model_info['model_type']} on {len(X_train)} training samples and validating on {len(X_val)} samples.")
 
 # Define parameter search spaces
 if model_info['model_type'] == 'XGBoost':
@@ -81,13 +82,12 @@ def evaluate_individual(individual):
         params['verbose'] = -1
         model = lgb.LGBMClassifier(**params)
     
-    # Use 3-fold CV to evaluate precision
-    cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
-    scorer = make_scorer(precision_score, pos_label=1, zero_division=0)
-    
+    # Train on training set, evaluate on validation set
     try:
-        scores = cross_val_score(model, X_train, y_train, cv=cv, scoring=scorer)
-        return (scores.mean(),)
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_val)
+        precision = precision_score(y_val, y_pred, zero_division=0)
+        return (precision,)
     except:
         return (0.0,)  # Return poor score if model fails
 
