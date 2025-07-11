@@ -92,19 +92,6 @@ python 7_run_complete_pipeline.py
 3. Compile and attach to XAUUSD M5 chart
 4. Configure EA parameters
 
-## Time-Based Data Splitting
-
-### Proper ML Workflow
-- **Training Set (2020-2022)**: Model learns patterns from historical data
-- **Validation Set (2023)**: Genetic Algorithm optimizes hyperparameters
-- **Test Set (2024+)**: Final evaluation on unseen recent data
-
-### Why Time-Based?
-- ✅ **No Data Leakage**: Model can't learn from future data
-- ✅ **Realistic Performance**: Tests on chronologically future data
-- ✅ **Prevents Overfitting**: Each phase uses distinct time periods
-- ✅ **Mirrors Live Trading**: Models trained on past, tested on present
-
 ## Machine Learning Pipeline
 
 ### Feature Engineering (14 Features)
@@ -210,19 +197,6 @@ GA_GENERATIONS = 10         # GA generations
 
 ## Performance Analysis
 
-### Model Validation
-
-Test your model predictions match between Python and MQL5:
-
-```bash
-python test_mql5_features.py
-```
-
-This verifies:
-- ✅ **Feature Consistency**: Same values in Python and MQL5
-- ✅ **Prediction Accuracy**: ONNX model produces identical results
-- ✅ **Pipeline Integrity**: End-to-end validation
-
 ### Confidence Threshold Tuning
 
 - **0.65+**: Very conservative, few trades
@@ -268,24 +242,6 @@ Print(feature_log);
 3. Validate new model against old model on test data
 4. Deploy only if statistically significant improvement
 
-## Key Improvements
-
-### vs Original Version
-
-- ✅ **Time-Based Splitting**: Prevents data leakage and overfitting
-- ✅ **Single Symbol Focus**: Simplified to XAUUSD only
-- ✅ **No Config Dependency**: Self-contained scripts
-- ✅ **Proper Validation**: Separate validation set for hyperparameter tuning
-- ✅ **ONNX Compatibility**: Fixed data type issues for MQL5
-- ✅ **Feature Debugging**: Real-time feature value logging
-
 ## Disclaimer
 
 This software is for educational and research purposes. Trading involves substantial risk of loss. Past performance does not guarantee future results. Use at your own risk and never risk more than you can afford to lose.
-
-## Acknowledgments
-
-- MetaTrader 5 for the trading platform
-- ONNX community for model portability standards
-- scikit-learn and XGBoost teams for ML frameworks
-- MQL5 community for trading insights
